@@ -3,13 +3,16 @@ package com.example.ExpenseTracker.service;
 import com.example.ExpenseTracker.model.DTO.ExpenseDto;
 import com.example.ExpenseTracker.model.ExpenseModel;
 import com.example.ExpenseTracker.model.UserModel;
+import com.example.ExpenseTracker.model.enums.ExpenseCategory;
 import com.example.ExpenseTracker.repo.ExpenseRepo;
 import com.example.ExpenseTracker.repo.UserRepo;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -76,6 +79,55 @@ public class ExpenseService {
         expense.setExpenseDate(dto.getExpenseDate());
 
         return expenseRepo.save(expense);
+    }
+
+    // SORT + FILTER
+    public List<ExpenseModel> getExpenses(
+            String email,
+            ExpenseCategory category,
+            LocalDate startDate,
+            LocalDate endDate,
+            Double minAmount,
+            Double maxAmount,
+            String sortBy,
+            String order
+    ) {
+        UserModel user = getUserByEmail(email);
+
+        Sort sort = order.equalsIgnoreCase("desc")
+                ? Sort.by(sortBy).descending()
+                : Sort.by(sortBy).ascending();
+
+        if (category != null) {
+            return expenseRepo.findByUser_UserIdAndCategory(
+                    user.getUserId(), category, sort
+            );
+        }
+
+        if (startDate != null && endDate != null) {
+            return expenseRepo.findByUser_UserIdAndExpenseDateBetween(
+                    user.getUserId(), startDate, endDate, sort
+            );
+        }
+
+        if (minAmount != null && maxAmount != null) {
+            return expenseRepo.findByUser_UserIdAndAmountBetween(
+                    user.getUserId(), minAmount, maxAmount, sort
+            );
+        }
+
+        return expenseRepo.findByUser_UserId(user.getUserId(), sort);
+    }
+
+    private UserModel getUserByEmail(String email) {
+        UserModel user = userRepo.findByEmailId(email);
+        if (user == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "User not found"
+            );
+        }
+        return user;
     }
 
 }

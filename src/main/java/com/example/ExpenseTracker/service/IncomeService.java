@@ -3,13 +3,16 @@ package com.example.ExpenseTracker.service;
 import com.example.ExpenseTracker.model.DTO.IncomeDto;
 import com.example.ExpenseTracker.model.IncomeModel;
 import com.example.ExpenseTracker.model.UserModel;
+import com.example.ExpenseTracker.model.enums.IncomeSource;
 import com.example.ExpenseTracker.repo.IncomeRepo;
 import com.example.ExpenseTracker.repo.UserRepo;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -18,6 +21,8 @@ public class IncomeService {
 
     private final IncomeRepo incomeRepo;
     private final UserRepo userRepo;
+
+
 
     public IncomeModel addIncome(IncomeDto dto, String email) {
         UserModel user = userRepo.findByEmailId(email);
@@ -74,4 +79,43 @@ public class IncomeService {
         IncomeModel income = getIncomeById(id, email);
         incomeRepo.delete(income);
     }
+
+    //  SORT + FILTER
+    public List<IncomeModel> getIncome(
+            String email,
+            IncomeSource source,
+            LocalDate startDate,
+            LocalDate endDate,
+            Double minAmount,
+            Double maxAmount,
+            String sortBy,
+            String order
+    ) {
+        UserModel user = getUserByEmail(email);
+
+        Sort sort = order.equalsIgnoreCase("desc") ? Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
+
+        if (source != null) {
+            return incomeRepo.findByUser_UserIdAndSource(user.getUserId(), source, sort);
+        }
+
+        if (startDate != null && endDate != null) {
+            return incomeRepo.findByUser_UserIdAndIncomeDateBetween(user.getUserId(), startDate, endDate, sort);
+        }
+
+        if (minAmount != null && maxAmount != null) {
+            return incomeRepo.findByUser_UserIdAndAmountBetween(user.getUserId(), minAmount, maxAmount, sort);
+        }
+
+        return incomeRepo.findByUser_UserId(user.getUserId(), sort);
+    }
+
+    private UserModel getUserByEmail(String email) {
+        UserModel user = userRepo.findByEmailId(email);
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found");
+        }
+        return user;
+    }
+
 }
