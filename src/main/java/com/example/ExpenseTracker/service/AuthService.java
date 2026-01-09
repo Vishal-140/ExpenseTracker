@@ -4,6 +4,7 @@ import com.example.ExpenseTracker.model.DTO.LoginDto;
 import com.example.ExpenseTracker.model.DTO.SignUpDto;
 import com.example.ExpenseTracker.model.UserModel;
 import com.example.ExpenseTracker.repo.UserRepo;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -17,6 +18,7 @@ public class AuthService {
     private final UserRepo userRepo;
     private final BCryptPasswordEncoder encoder;
     private final JwtService jwtService;
+    private final GoogleAuthService googleAuthService;
 
     public UserModel signup(SignUpDto dto) {
 
@@ -54,5 +56,21 @@ public class AuthService {
         }
 
         return jwtService.generateToken(user.getEmailId());
+    }
+
+
+    public String googleLogin(String email) {
+
+        UserModel user = userRepo.findByEmailId(email);
+
+        if (user == null) {
+            user = new UserModel();
+            user.setEmailId(email);
+            user.setUsername(email.split("@")[0]);
+            user.setPassword(encoder.encode("GOOGLE_LOGIN"));
+            userRepo.save(user);
+        }
+
+        return jwtService.generateToken(email);
     }
 }

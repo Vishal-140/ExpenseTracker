@@ -22,23 +22,30 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http
-                // enable CORS (Spring Boot 4)
                 .cors(cors -> {})
-
                 .csrf(csrf -> csrf.disable())
 
+                //  SESSION NEEDED FOR OAUTH
                 .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                        session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
                 )
 
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers(
+                                "/auth/**",
+                                "/oauth2/**",
+                                "/login/oauth2/**"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
 
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                //  GOOGLE LOGIN
+                .oauth2Login(oauth ->
+                        oauth.defaultSuccessUrl("/auth/google/success", true)
+                )
 
-                .formLogin(form -> form.disable());
+                //  JWT FOR API
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
